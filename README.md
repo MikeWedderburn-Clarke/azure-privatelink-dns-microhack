@@ -51,9 +51,9 @@ In summary:
 
 - "On-Premises" environment simulated by Azure Virtual Network
 - On-Premises contains a management VM (*onprem-mgmt-vm*) and a dns server VM (*onprem-dns-vm*)
-- On-Premises is connected to Azure via a Site-to-Site VPN
+- On-Premises is connected to Azure via VNet peering to make the lab faster
 - Azure contains a simple Hub and Spoke topology, containing a management VM in the spoke (*az-mgmt-vm*) and a dns server VM in the hub (*az-dns-vm*)
-- Azure Bastion is deployed in all VNets to enable easy remote desktop access to the Windows VMs
+- Azure Bastion is deployed in the Hub to enable easy remote desktop access to the Windows VMs
 - All of the above is deployed within a single resource group called *privatelink-dns-microhack-rg*
 
 ## Task 1 : Deploy Template
@@ -81,7 +81,7 @@ To start the terraform deployment, follow the steps listed below:
 
 - Choose a suitable password to be used for your Virtual Machines administrator account (username: AzureAdmin)
 
-- Wait for the deployment to complete. This will take around 30 minutes (the VPN gateways take a while).
+- Wait for the deployment to complete. This will take around 5 minutes
 
 ## Task 2 : Explore and verify the deployed resources
 
@@ -91,7 +91,8 @@ Username: AzureAdmin
 
 Password: {as per above step}
 
-- Verify that your VNet Peering and Site-to-site VPN are funcitoning as expected. The easiest way to do this is as follows; Once you have Azure Bastion access to the desktop of *az-mgmt-vm*, launch remote desktop (mstsc), and attempt a connection to *onprem-mgmt-vm* (IP address 192.168.0.5). You should recieve the login prompt.
+- Verify that your VNet Peerings are funcitoning as expected. The easiest way to do this is as follows; Once you have Azure Bastion access to the desktop of *az-mgmt-vm*, launch remote desktop (mstsc), and attempt a connection to *onprem-mgmt-vm* (IP address 192.168.0.5). You should recieve the login prompt.
+Remember not to rely on ping as this may be blocked
 
 ## Task 3 : Install SQL Server Management Studio on both az-mgmt-vm and onprem-mgmt-vm
 
@@ -109,63 +110,25 @@ Now that we have the base lab deployed, we can progress to the Private Link chal
 
 # Challenge 1 : Connect to Azure SQL
 
-### Goal 
-
-The goal of this exercise is to deploy a simple Azure SQL Server and observe the default network behaviour when connecting to it. 
-
-## Task 1 : Deploy an Azure SQL Server
-
-Within the MicroHack resource group (privatelink-dns-microhack-rg) deploy a simple Azure SQL Server in the West Europe. Example config shown below.
-
-![image](images/1.PNG)
+Deploy a simple Azure SQL Server into the lab Resource Group and observe the default network behaviour when connecting to it. 
+We only need **server** (free) not **database** to be able to test connectivity.
+Test connectivity using SSMS and the dynamic public IP (SNAT) of your 'az' and 'onprem' mgmt vms.
 
 ### :point_right: Hint 
+curl ifconfig.co
 
-**Your own SQL Server name will need to be unique, please name accordingly**
+Make sure that "Allow Azure services and resources to access this server" is set at its default setting of **No**
+Otherwise your SQL server will accept (at a network level, they will of course need a suitable username and password) connections from all subscriptions inside of Azure. See here for more details https://docs.microsoft.com/en-us/azure/azure-sql/database/firewall-configure#connections-from-inside-azure
 
-How do we connect to this SQL Server by default, what networking information is needed, where do we find this?
 
-## Task 2:  Test default connectivity to Azure SQL
 
-Using the FQDN obtained in the previous step, confirm that your *az-mgmt-vm* VM can establish a connection to your SQL Server. Launch SQL Server Management Studio (SSMS) and input your SQL Server details and credentials.
 
-![image](images/2a.png)
-
-- Why does this connection fail?
-
-## Task 3:  Modify SQL server firewall
-
-- What settings on the Azure SQL server firewall do you need to modify?
-
-- How can you verify which source Public IP address your *az-mgmt-vm* VM is using when accessing the Internet?
-
-- How can you verify which destination Public IP is being used when connecting to your SQL Server FQDN?
-
-![image](images/2.PNG)
-
-### :point_right: Hint, watch out! 
-
-**Make sure that "Allow Azure services and resources to access this server" is set at its default setting of No**. Otherwise your SQL server will accept (at a network level, they will of course need a suitable username and password) connections from all subscriptions inside of Azure. See here for more details https://docs.microsoft.com/en-us/azure/azure-sql/database/firewall-configure#connections-from-inside-azure
-
-## :checkered_flag: Results
-
-- You have deployed a basic Azure SQL Server, modified the default firewall settings, and connected to it from your *az-mgmt-vm* VM. You have confirmed that you are accessing it via the "Internet" (This traffic does not leave the Microsoft backbone, but it does use Public IP addresses). The traffic is sourced from the dynamic NAT address of your *az-mgmt-vm* VM and is destined to a public IP address sitting in front of the Azure SQL Service. 
 
 # Challenge 2 : Implement Service Endpoints to restrict access to your Azure SQL Server
 
-### Goal
-
-The goal of this challenge is to implement Service Endpoints to restrict access to your Azure SQL Server; turning off inbound connections from Public IPs (The Internet) and only allowing access from the subnet within which your *az-mgmt-vm* VM resides.
-
-Service Endpoints are often thought of as "generation 1" of secure access to PaaS services that do not benefit from VNet injection. It is good to revisit the behaviour of Service Endpoints to highlight the subtle benefits when working with Private Link.
-
-## Task 1: Remove public IP address from SQL Server firewall
-
-Within the previous step we added the public S-NAT IP address used by our *az-mgmt-vm* VM to the SQL Server firewall. Please remove this IP address and save the firewall settings. This ensures that no inbound connections are permitted from any public IP address.
-
-## Task 2: Enable Service Endpoints on your subnet
-
-On your InfrastructureSubnet subnet, within the spoke-vnet VNet, enable Service Endpoints for Azure.SQL. 
+VNet Service Endpoints are the 'old' way to provide restricted connectivity but can still be useful in some scenarios.
+Test this before starting on Private Link.
+Ensure you block public connectivity and remove the SQL firewall allow rule to make sure you're using VNet Service Endpoints.
 
 ![image](images/3.PNG)
 
