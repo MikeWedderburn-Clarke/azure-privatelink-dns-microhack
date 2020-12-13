@@ -9,11 +9,10 @@
 [Challenge 2 : Test VNet Service Enpoints](#challenge-2--test-vnet-service-endpoints)
 
 [Challenge 3 : Connect using Private Endpoint in the spoke](#challenge-3--Connect-using-Private-Endpoint-in-the-spoke)
-Challenge 3 : Connect using Private Endpoint in the spoke
 
-[Challenge 4 : Deny public access to Azure SQL Server](#challenge-4--deny-public-access-to-azure-sql-server)
+[Challenge 4 : Custom DNS server in Hub](#challenge-4--Custom-DNS-server-in-Hub)
 
-[Challenge 5 : Work with a custom DNS server inside of Azure](#challenge-5--work-with-a-custom-dns-server-inside-of-azure)
+[Challenge 5 : Use Private Link from On-prem](#challenge-5--Use-Private-Link-from-On-prem)
 
 [Challenge 6 : Use Private Link to access an Azure SQL database over a Private Hybrid Connection](#challenge-6--use-private-link-to-access-an-azure-sql-database-over-a-private-hybrid-connection)
 
@@ -195,7 +194,7 @@ For this challenge you need to:
 - You are now using Azure Private Link to access your SQL server alongside the use of a custom DNS server inside of Azure. DNS requests from your *az-mgmt-vm* VM within the Spoke VNet are being sent via the Microsoft Windows Server inside of your Hub VNet (*az-dns-vm* VM). This server is configured to send all unknown requests to Azure DNS.
 
 
-# Challenge 6 : Use Private Link from On-prem
+# Challenge 5 : Use Private Link from On-prem
 
 Customers have existing on-prem DNS infrastructure which is critical for normal operations. It is hard to get them to make changes to this so we must be able to clearly articulate the benefits of doing so and exactly why it is required.
 
