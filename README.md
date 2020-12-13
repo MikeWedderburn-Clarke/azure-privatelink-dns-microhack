@@ -79,7 +79,7 @@ To start the terraform deployment, follow the steps listed below:
 
 - Choose a suitable password to be used for your Virtual Machines administrator account (username: AzureAdmin)
 
-- Wait for the deployment to complete. This will take around 5 minutes
+- Wait for the deployment to complete. This will take around 7 minutes
 
 ## Task 2 : Explore and verify the deployed resources
 
