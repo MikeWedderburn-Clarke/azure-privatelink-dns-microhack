@@ -14,9 +14,7 @@
 
 [Challenge 5 : Use Private Link from On-prem](#challenge-5--Use-Private-Link-from-On-prem)
 
-[Challenge 6 : Use Private Link to access an Azure SQL database over a Private Hybrid Connection](#challenge-6--use-private-link-to-access-an-azure-sql-database-over-a-private-hybrid-connection)
-
-[Challenge 7 : (Warning! Stretch Goal / Advanced) Use Private Link from On-Premises without a pre-existing DNS Server in Azure](#challenge-7--warning-stretch-goal--advanced-use-private-link-from-on-premises-without-a-pre-existing-dns-server-in-azure)
+[Challenge 6 : Stretch Goal](#challenge-6--Stretch-Goal)
 
 # Scenario
 
@@ -218,8 +216,9 @@ For this challenge you need to:
 
 ![image](images/15.PNG)
  
-# Challenge 7 : (Warning! Stretch Goal / Advanced) Use Private Link from On-Premises without a pre-existing DNS Server in Azure
+# Challenge 6 : Stretch Goal
 
+**(Warning! Stretch Goal / Advanced) Use Private Link from On-Premises without a pre-existing DNS Server in Azure
 
 ### Goal
 
