@@ -141,8 +141,6 @@ Make sure to remove the VNet Service Endpoint and test you can no longer access 
 
 Create a Private Endpoint for your SQL Server in the spoke VNet.
 
-![image](images/6.PNG)
-
 Deny public network access.
 
 ![image](images/5.PNG)
@@ -246,7 +244,7 @@ You can shut down or delete resources to save money.
 
 1) Shut down all VMs
 2) Delete Bastion (it can't be shut down currently and is the most expensive resource). It's easy to deploy when you need it
-3) Optionally delete the resource group privatelink-dns-microhack-rg
+3) Optionally delete the resource group privatelink-dns-microhack-rg . You can also use terraform destroy
 
 Thank you for participating in this MicroHack!
 
