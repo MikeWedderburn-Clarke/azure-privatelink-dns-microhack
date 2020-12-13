@@ -8,7 +8,8 @@
 
 [Challenge 2 : Test VNet Service Enpoints](#challenge-2--test-vnet-service-endpoints)
 
-[Challenge 3 : Deploy a Private Endpoint to utilise Azure Private Link for access to Azure SQL](#challenge-3--deploy-a-private-endpoint-to-utilise-azure-private-link-for-access-to-azure-sql)
+[Challenge 3 : Connect using Private Endpoint in the spoke](#challenge-3--Connect-using-Private-Endpoint-in-the-spoke)
+Challenge 3 : Connect using Private Endpoint in the spoke
 
 [Challenge 4 : Deny public access to Azure SQL Server](#challenge-4--deny-public-access-to-azure-sql-server)
 
@@ -180,7 +181,7 @@ For this challenge you need to:
 
 ![image](images/10.PNG)
 
-- Make sure the Hub DNS server knwos where to forward to in order to resolve Azure private DNS records
+- Make sure the Hub DNS server knows where to forward to in order to resolve Azure private DNS records
 
 ![image](images/12.PNG)
 
