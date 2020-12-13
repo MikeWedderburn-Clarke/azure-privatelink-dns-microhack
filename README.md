@@ -43,7 +43,7 @@ With these pre-requisites in place, we can focus on building the differentiated 
 
 At the end of this section your base lab build looks as follows:
 
-![image](images/pl-micro-start.PNG)
+![image](images/start.png)
 
 In summary:
 
