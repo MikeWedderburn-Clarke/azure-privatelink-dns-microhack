@@ -91,7 +91,7 @@ Username: AzureAdmin
 
 Password: {as per above step}
 
-- Verify that your VNet Peerings are funcitoning as expected. The easiest way to do this is as follows; Once you have Azure Bastion access to the desktop of *az-mgmt-vm*, launch remote desktop (mstsc), and attempt a connection to *onprem-mgmt-vm* (IP address 192.168.0.5). You should recieve the login prompt.
+- Verify that your VNet Peerings are funcitoning as expected. The easiest way to do this is to use Bastion to connect to all 4 VMs. Leave each one open in a new tab as you'll use them later. 
 Remember not to rely on ping as this may be blocked
 
 ## Task 3 : Install SQL Server Management Studio on both az-mgmt-vm and onprem-mgmt-vm
@@ -147,7 +147,7 @@ Create a Private Endpoint for your SQL Server in the spoke VNet.
 
 Deny public network access.
 
-![image](images/flow.png)
+![image](images/5.PNG)
 
 Test with nslookup in spoke
 
