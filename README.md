@@ -43,7 +43,7 @@ With these pre-requisites in place, we can focus on building the differentiated 
 
 At the end of this section your base lab build looks as follows:
 
-![image](images/base.PNG)
+![image](images/pl-micro-start.PNG)
 
 In summary:
 
@@ -214,7 +214,7 @@ For this challenge you need to:
 
 - You are now using Azure Private Link to access your SQL server from On-Premises. You have modified your DNS configuration to make this work, as depicted in the packet-walk diagram below.
 
-![image](images/15.PNG)
+![image](images/pl-micro-end.PNG)
  
 # Challenge 6 : Stretch Goal
 
