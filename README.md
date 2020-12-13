@@ -67,7 +67,7 @@ To start the terraform deployment, follow the steps listed below:
 
 - Clone the following GitHub repository 
 
-`git clone https://github.com/adstuart/azure-privatelink-dns-microhack`
+`git clone https://github.com/MikeWedderburn-Clarke/azure-privatelink-dns-microhack`
 
 - Go to the new folder azure-privatelink-dns-microhack and initialize the terraform modules and download the azurerm resource provider
 
