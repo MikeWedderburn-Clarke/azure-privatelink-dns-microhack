@@ -115,10 +115,9 @@ We only need **server** (free) not **database** to be able to test connectivity.
 Test connectivity using SSMS and the dynamic public IP (SNAT) of your 'az' and 'onprem' mgmt vms.
 
 ### :point_right: Hint 
-curl ifconfig.co
+1. curl ifconfig.co
+2. "Allow Azure services and resources to access this server" = **No**
 
-Make sure that "Allow Azure services and resources to access this server" is set at its default setting of **No**
-Otherwise your SQL server will accept (at a network level, they will of course need a suitable username and password) connections from all subscriptions inside of Azure. See here for more details https://docs.microsoft.com/en-us/azure/azure-sql/database/firewall-configure#connections-from-inside-azure
 
 
 
