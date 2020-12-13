@@ -6,7 +6,7 @@
 
 [Challenge 1 : Connect to Azure SQL](#challenge-1--connect-to-azure-sql)
 
-[Challenge 2 : Implement Service Endpoints to restrict access to your Azure SQL Server](#challenge-2--implement-service-endpoints-to-restrict-access-to-your-azure-sql-server)
+[Challenge 2 : Test VNet Service Enpoints](#challenge-2--test-vnet-service-endpoints)
 
 [Challenge 3 : Deploy a Private Endpoint to utilise Azure Private Link for access to Azure SQL](#challenge-3--deploy-a-private-endpoint-to-utilise-azure-private-link-for-access-to-azure-sql)
 
@@ -110,7 +110,7 @@ Now that we have the base lab deployed, we can progress to the Private Link chal
 
 # Challenge 1 : Connect to Azure SQL
 
-Deploy a simple Azure SQL Server into the lab Resource Group and observe the default network behaviour when connecting to it. 
+Deploy a simple Azure SQL Server (logical server) into the lab Resource Group and observe the default network behaviour when connecting to it. 
 We only need **server** (free) not **database** to be able to test connectivity.
 Test connectivity using SSMS and the dynamic public IP (SNAT) of your 'az' and 'onprem' mgmt vms.
 
@@ -119,66 +119,37 @@ Test connectivity using SSMS and the dynamic public IP (SNAT) of your 'az' and '
 2. "Allow Azure services and resources to access this server" = **No**
 
 
-
-
-
-
-# Challenge 2 : Implement Service Endpoints to restrict access to your Azure SQL Server
+# Challenge 2 : Test VNet Service Endpoints
 
 VNet Service Endpoints are the 'old' way to provide restricted connectivity but can still be useful in some scenarios.
 Test this before starting on Private Link.
 Ensure you block public connectivity and remove the SQL firewall allow rule to make sure you're using VNet Service Endpoints.
 
-![image](images/3.PNG)
-
-## Task 3: Enable Virtual Network access within SQL Server Firewall
-
-Create a new Virtual Network rule within your SQL Server Firewall allowing access from the InfrastructureSubnet within which your *az-mgmt-vm* VM resides. Notice how it recognises that you have enabled the service endpoint for Azure.SQL in Task 1 - "service endpoint status = enabled".
 
 ![image](images/4.PNG)
 
-Now verify that you are still able to connect to your SQL server via SSMS.
 
 ## :checkered_flag: Results
 
 - Your SQL Server is no longer accepting connections from any Public IP address. It only accepts connections from your a specific subnet where service endpoints are enabled. 
 - Using the nslookup command, from your *az-mgmt-vm* check the DNS response being returned for your SQL Server FQDN. Notice how the DNS lookup returns a Public IP.
 
-### :point_right: Hint 
+## 2.1: Remove Service Endpoints
 
-**Even with service endpoints enabled, we are still sending destination traffic to the Public Interface of our SQL Server. The difference is how the traffic is sourced; now utilising a special "VNET:Subnet" tag, rather than the Public IP address in Step 1**
+Make sure to remove the VNet Service Endpoint and test you can no longer access the SQL server from the mgmt VM.
 
-## Task 4: Remove Service Endpoints
 
-Before proceeding to challenge 3, remove your Service Endpoint configuraiton from the subnet, and remove the Virtual Network rule from the SQL server firewall. 
+# Challenge 3 : Connect using Private Endpoint in the spoke
 
-# Challenge 3 : Deploy a Private Endpoint to utilise Azure Private Link for access to Azure SQL
-
-### Goal
-
-In order to access your SQL Server via its "Private interface" we need to setup a new Private Endpoint and map this to your specific server. This will allow us to access the SQL server from your *az-mgmt-vm* VM, without using the Public interface via an IP or Virtual Network Firewall Rules.
-
-## Task 1 : Setup Private Endpoint
-
-- Search for Private Link in the portal and click on "create private endpoint".
-- Deploy to the MicroHack RG and give it a name such as PE-SQL
-- Within step 2 "resource" we choose which PaaS service we want to point our Private Endpoint at. Look within your directory to find your SQL Server (use resource type microsoft.sql/servers and sub-resource sqlServer)
-- Within step 3 "configuration" we choose where to place your Private Endpoint NIC. Place it within the same InfrastructureSubnet as your *az-mgmt-vm* VM (within the Spoke).
-- Leave the Private DNS Integration at the default "yes". More on this later.
+Create a Private Endpoint for your SQL Server in the spoke VNet.
 
 ![image](images/6.PNG)
 
-## Task 2: Observe deployed resources and functions
+Deny public network access.
 
-Once deployed you now have some new resources in your MicroHack resource group:
+![image](images/flow.png)
 
-- A **Private Endpoint** named something similar to PE-SQL. Notice how it obtains an IP dynamically (10.1.0.5). Also notice how it has been auto-approved on the provider side (this happened because you have the appropriate RBAC rights on the SQL Server). If you did not, for example if the SQL server you were trying to connect to was within another Azure AD tenant, the service owner would be asked to approve connectivity on their side.
-- An **Azure DNS Private Zone** for privatelink.database.windows.net. This was automatically created for you as part of the portal experience for Private Endpoints. Have a look within this resource and notice how you have an A record mapping your PE IP of 10.1.0.5 to your SQL Server FQDN. Click on Virtual Network Links and observe how this zone is linked to your Spoke Virtual Network.
-- A new **Private endpoint connection** is now visible within a blade of the same name, within your SQL Server settings (*one below Firewall and Virtual Networks*). Notice how, as the service owner, you can reject or remove this connection if desired.
-
-## Task 3: Test private connectivity via your Private Endpoint
-
-Back on your *az-mgmt-vm* VM, re-run the nslookup command you used earlier to check what IP address is being used by your SQL server. 
+Test with nslookup in spoke
 
 ### :point_right: Hint 
 
@@ -186,133 +157,64 @@ Back on your *az-mgmt-vm* VM, re-run the nslookup command you used earlier to ch
 
 ![image](images/7.PNG)
 
-Re-connect using SSMS and ensure access is working again.
+Test with SSMS
 
-## :checkered_flag: Results
 
-- You have connected to your SQL server via a new Private Endpoint
-- Your SSMS connection is still using the same FQDN <database-name>.database.windows.net, no client changes were required. However your Azure DNS Private Zone is defined for <database-name>.**privatelink**.database.windows.net. How is this re-direct happening? Pay close attention to the output of your nslookup command earlier.
- - Notice how an Azure DNS Private Zone was deployed for you, and automatically setup with the correct A record and VNet link. Would the same thing happen if using AZ CLI or Powershell to deploy your Private Endpoint? If not, what would be required? How could we automate this step when working via the ARM API outside of the portal?
+
  
-# Challenge 4 : Deny public access to Azure SQL Server
+# Challenge 4 : Custom DNS server in Hub
 
-### Goal
+Usually Azure VNets will be using custom DNS servers to provide consistent name resolution across VNets and integration with on-prem DNS.
 
-In this step we will block all inbound access to your SQL Server on its public interface. This means that any existing Firewall rules (Public IP or Virtual Network) will become ineffective. To be clear **this prevents any access from a public IP address, or use of service endpoints; I.e. the Virtual Network link you added to the SQL firewall is now no longer active. With this setting toggled "on", you must use Private Endpoints to access your SQL Server**
+For this challenge you need to:
 
-Further reading on this step
-
-https://docs.microsoft.com/en-us/azure/azure-sql/database/connectivity-settings#deny-public-network-access
- 
-## Task 1 :  Turn off Public access
-
-![image](images/5.PNG)
-
-## :checkered_flag: Results
-
-- You have blocked all public access. 
-- Please note, you are only able to toggle this setting on after configuring at least one "Private Endpoint Connection" on your SQL Server resource.
-
-The following diagram from the official Azure documentation provides further detail on this subject:
-
-![image](images/flow.png)
- 
-# Challenge 5 : Work with a custom DNS server inside of Azure
-
-### Goal 
-
-In the previous challenge we successfully used Azure Private Link and Azure DNS Private Zones to connect in a secure way to our Azure SQL server. This was possible, as the Azure DNS Private Zone was linked directly to the spoke Virtual Network. The Spoke Virtual network has the default DNS settings; send all DNS requests by default to Azure DNS via the special 168.63.129.16 address. More on that here https://docs.microsoft.com/en-us/azure/virtual-network/what-is-ip-address-168-63-129-16. 
-
-However, the previous challenge was not reflective of a real-world configuration for lots of customers. Many Azure network designs use a custom DNS solution such as customer manged DNS running on top of an IaaS Virtual Machine (or more likely a pair of VMs) hosted in the Azure VNet. In this challenge we will alter our Spoke VNet to utilise our custom DNS server inside of the Azure Hub VNet; a Windows Server 2019 VM running Microsoft DNS. We will also ensure we retain access to our SQL Server and that the DNS response continues to include the use of our Private Endpoint IP address.
-
-## Task 1 : Change Spoke VNet DNS settings
-
-Update the Spoke VNet custom DNS settings to point at your *az-dns-vm* VM inside of the Hub VNet. In a production deployment this would typically consist of a pair of VMs, for our lab we only have a single VM.
+1) Allow the Hub server to connect to the private endpoint in the spoke
+2) Configure the spoke VNet to use the custom DNS server in the Hub
 
 ![image](images/8.PNG)
 
-**Reboot** your *az-mgmt-vm* VM so that it picks up the new DNS settings.
 
-From your *az-mgmt-vm* VM re-run your nslookup command to check the IP address returned for your SQL Server. Notice how the DNS server used is now 10.0.0.4 (the IP address of your *az-dns-vm* VM), but the A record returned has now regressed to using the public VIP of SQL. Access to your SQL Server will not work in this configuration as you are not utilising your Private Endpoint.
+### :point_right: Hint 
 
-![image](images/9.PNG)
-
-Consisder why has this happened if your Azure DNS private zone is still in place?
-
-## Task 2 : Modify Azure DNS Private Zone
-
-Your Azure DNS Private Zone is only linked to your Spoke VNet. However, your Spoke VNet is now sending its requests for DNS to the *az-dns-vm* VM inside of your Hub VNet. This in turn is configured to query Azure DNS. As your Azure DNS Private Zone is not linked to your Hub VNet, requests from this VNet utilise only the records held within Azure Public DNS, and not your custom Azure DNS Private Zones configuration. Let's change that by first deleting our Azure DNS Private Zones Network Link to the spoke VNet, and then setup a new Virtual Network link to your Hub VNet.
+- Make sure your hub vm can 'see' the private DNS zone containing the private endpoint records
 
 ![image](images/10.PNG)
 
-## Task 3 : Add conditional forwarder to *az-dns-vm* VM in Azure
-
-Your custom DNS server inside of Azure consists of a Windows Server 2019 VM, with the DNS role enabled. The default configuration of this is to send all unknown DNS requests to something called Root Hints (A known collection of servers on the Internet that can be used for public DNS lookups). You can verify this via logging in to the *az-dns-vm* VM and looking at the server properties in DNS Manager.
-
-![image](images/11.PNG)
-
-This means that DNS requests from our *az-mgmt-vm* VM are being forwarded to our DNS Server (*az-dns-vm*), and then on to public Root Hints server(s) located on the public Internet. (You can see these server details within the Root Hunts tab if you are interested). Unfortunately, whilst this is great for enabling a Microsoft DNS Server to function with its default config, it also means that requests are not being sent to Azure DNS (via the special 168 address mentioned earlier), and therefore our use of Azure DNS Private Zones is failing.
-
-We could fix this in one of two ways. Either by enabling a specific forwarder (known as conditional forwarding in DNS) to our database.windows.net zone, or we can just tell our server to forward all unknown requests (That is, requests for which it does not have a local forward-lookup zone defined) to Azure DNS by default. We will dig in to the former as part of a later challenge, so let's go with the easier option of updating our global forwarder within DNS Manager to point at Azure DNS.
+- Make sure the Hub DNS server knwos where to forward to in order to resolve Azure private DNS records
 
 ![image](images/12.PNG)
-
-## Task 4: Verify
-
-Verify:
 
 - Clear the DNS cache on your *az-mgmt-vm* VM via 'ipconfig /flushdns'. 
 - Clear the DNS cache on your *az-dns-vm* VM. (Browse DNS Manager, right-click server name 'clear cache')
 - Re-run nslookup on the *az-mgmt-vm* VM in Azure to ensure the Private IP is once again being returned
-- Browse via SSMS, proving that Private Link is once again operational
+- Connect via SSMS, proving that Private Link is once again operational
 
 ## :checkered_flag: Results
 
 - You are now using Azure Private Link to access your SQL server alongside the use of a custom DNS server inside of Azure. DNS requests from your *az-mgmt-vm* VM within the Spoke VNet are being sent via the Microsoft Windows Server inside of your Hub VNet (*az-dns-vm* VM). This server is configured to send all unknown requests to Azure DNS.
 
-# Challenge 6 : Use Private Link to access an Azure SQL Server over a Private Hybrid Connection
 
-### Goal
+# Challenge 6 : Use Private Link from On-prem
 
-The goal of this exercise is to show how Private Link can be used to access an Azure PaaS service over a private hybrid connection. This could be either an ExpressRoute Private Peering or a Site-to-site VPN. In our lab we use the latter for ease of deployment. This is a core benefit of Private Link and in high demand by customers, as it enables access to PaaS services on a Private IP address from On-Premises locations, as opposed to via a Public Interface which would typically traverse the Public Internet (Or ExpressRoute Microsoft Peering if that is in place).
+Customers have existing on-prem DNS infrastructure which is critical for normal operations. It is hard to get them to make changes to this so we must be able to clearly articulate the benefits of doing so and exactly why it is required.
 
-## Task 1 :  Consider hybrid topology and expected packet flow 
+For this challenge you need to:
 
-We already verified as part of the MicroHack pre-requisites that our On-Premises network can access our Azure environment. Therefore, at a basic Layer-3 IP-Routing network level we have access from our *onprem-mgmt-vm* VM to the IP address of our Private Endpoint in the Spoke VNet.
+1) Configure a Conditional Forwarder in the on-prem DNS to use your Azure custom DNS server to resolve **database.windows.net
+2) Test resolution using nslookup from onprem-mgmt-vm
+3) Connect using SSMS
 
-However, the complexity of On-Premises use of Private Endpoints is not one of network routing, but more one of DNS. Our On-Premises DNS server (*onprem-dns-vm* VM) (which our On-Premises client (*onprem-mgmt-vm* VM) is configured to use) sends all unknown requests out to the Internet (8.8.8.8). This is typical of an On-Premises DNS server within a company's Data Centre, either using Public DNS servers or the DNS server from their incumbent Internet Service Provider (ISP). Please re-visit the topology diagram at the start of the Micro Hack to see this configuration in visual format.
 
-As we observed in Challenge 4, we need to modify our DNS requests in order to use Private Link. The same applies to On-Premises traffic, but the challenge is made more difficult by one key consideration: **Your On-Premises DNS server does not live in Azure! (Well it does in this lab, but let's ignore that ;-) ). Due to this, it cannot query the special 168.63.129.16 address; this only exists within Azure, and can only be queried by resources residing on an Azure Host.**
+### :point_right: Hint 
 
-We therefore need to modify our On-Premises DNS configuration to only forward certain requests (for the PaaS services we are using Private Link for) to something that lives in our Azure Virtual Network, which in turn can "proxy" these requests on to Azure DNS via the special 168 address. Luckily for us, and most customers, we have something that is listening for DNS requests in our VNet; our Hub DNS Server (*az-dns-vm* VM)with IP address 10.0.0.4!
-
-## Task 2 :  Verify default behaviour or On-Premises client/mgmt VM
-
-Run a quick nslookup from your *onprem-mgmt-vm* VM, and notice that it receives back the public IP for your SQL server. Also note the DNS server being used is 192.168.0.4 - the On-Premises DNS Server in your topology (*onprem-dns-vm* VM).
-
-![image](images/13.PNG)
-
-## Task 3 :  Setup conditional forwarder
-
-- Login to your *onprem-dns-vm* VM and open DNS Manager. 
-- Observe the global forwarder for 8.8.8.8.
-- Configure a new conditional forwarder for database.windows.net pointing at your Azure DNS Server (*az-dns-vm* VM - 10.0.0.4)
+- Conditional forwarder
 
 ![image](images/14.PNG)
 
-Your On-Premises DNS Server (*onprem-dns-vm* VM) is now configured to forward all unknown requests to 8.8.8.8, but has a more specific condition to forward requests matching *.database.windows.net* to 10.0.0.4; the IP address of your Azure DNS server (*az-dns-vm* VM), reached via the Site-to-Site VPN. Further reading on this specific subject is available at https://github.com/dmauser/PrivateLink/tree/master/DNS-Integration-Scenarios#41-which-conditional-forwarder-zone-should-be-used. 
-
-## Task 4: Verify
-
-Verify:
-
-- Clear the DNS cache on your *onprem-client-vm* VM via 'ipconfig /flushdns'. 
-- Clear the DNS cache on your *onprem-dns-vm* VM. (Browse DNS Manager, right-click server name 'clear cache')
-- Re-run nslookup on the *onprem-client-vm* VM to ensure the Private IP is once again being returned, launch SSMS and ensure you are able to access your SQL Server.
 
 ## :checkered_flag: Results
 
-- You are now using Azure Private Link to access your SQL server from On-Premises, entirely via your privately IP addressed Hybrid Site-to-Site VPN Connection. You have modified your DNS configuration to make this work, as depicted in the packet-walk diagram below.
+- You are now using Azure Private Link to access your SQL server from On-Premises. You have modified your DNS configuration to make this work, as depicted in the packet-walk diagram below.
 
 ![image](images/15.PNG)
  
@@ -333,17 +235,19 @@ Perhaps you do not have DNS Servers inside of Azure, but you **do** have an Azur
 
 https://docs.microsoft.com/en-us/azure/firewall/dns-settings
  
-Note this feature is currently in public preview.
-
 Further reading - https://github.com/adstuart/azure-privatelink-dns-azurefirewall
 
 ## Option 2 :  Deploy a light-weight highly-available DNS proxy based on NGINX
 
 https://github.com/microsoft/PL-DNS-Proxy
  
-# Finished? Delete your lab
+# Finished? Save money
 
-- Delete the resource group privatelink-dns-microhack-rg
+You can shut down or delete resources to save money.
+
+1) Shut down all VMs
+2) Delete Bastion (it can't be shut down currently and is the most expensive resource). It's easy to deploy when you need it
+3) Optionally delete the resource group privatelink-dns-microhack-rg
 
 Thank you for participating in this MicroHack!
 
