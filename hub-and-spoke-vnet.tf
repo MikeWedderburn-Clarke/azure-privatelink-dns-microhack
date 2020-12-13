@@ -1,12 +1,4 @@
 #######################################################################
-## Define Locals
-#######################################################################
-
-locals {
-  shared-key = "4-v3ry-53cr37-1p53c-5h4r3d-k3y"
-}
-
-#######################################################################
 ## Create Virtual Networks
 #######################################################################
 
@@ -40,13 +32,6 @@ resource "azurerm_virtual_network" "spoke-vnet" {
 ## Create Subnets
 #######################################################################
 
-resource "azurerm_subnet" "hub-gateway-subnet" {
-  name                 = "GatewaySubnet"
-  resource_group_name  = azurerm_resource_group.privatelink-dns-microhack-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  address_prefix       = "10.0.255.224/27"
-}
-
 resource "azurerm_subnet" "hub-bastion-subnet" {
   name                 = "AzureBastionSubnet"
   resource_group_name  = azurerm_resource_group.privatelink-dns-microhack-rg.name
@@ -59,13 +44,6 @@ resource "azurerm_subnet" "hub-dns" {
   resource_group_name  = azurerm_resource_group.privatelink-dns-microhack-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
   address_prefix       = "10.0.0.0/24"
-}
-
-resource "azurerm_subnet" "spoke-bastion-subnet" {
-  name                 = "AzureBastionSubnet"
-  resource_group_name  = azurerm_resource_group.privatelink-dns-microhack-rg.name
-  virtual_network_name = azurerm_virtual_network.spoke-vnet.name
-  address_prefix       = "10.1.1.0/27"
 }
 
 resource "azurerm_subnet" "spoke-infrastructure" {
@@ -93,19 +71,6 @@ resource "azurerm_public_ip" "hub-bastion-pip" {
   }
 }
 
-resource "azurerm_public_ip" "spoke-bastion-pip" {
-  name                = "spoke-bastion-pip"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.privatelink-dns-microhack-rg.name
-  allocation_method   = "Static"
-  sku                 = "Standard"
-
-  tags = {
-    environment = "spoke"
-    deployment  = "terraform"
-    microhack   = "privatelink-dns"
-  }
-}
 
 #######################################################################
 ## Create Bastion Services
@@ -129,24 +94,6 @@ resource "azurerm_bastion_host" "hub-bastion-host" {
   }
 }
 
-resource "azurerm_bastion_host" "spoke-bastion-host" {
-  name                = "spoke-bastion-host"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.privatelink-dns-microhack-rg.name
-
-  ip_configuration {
-    name                 = "spoke-bastion-host"
-    subnet_id            = azurerm_subnet.spoke-bastion-subnet.id
-    public_ip_address_id = azurerm_public_ip.spoke-bastion-pip.id
-  }
-
-  tags = {
-    environment = "spoke"
-    deployment  = "terraform"
-    microhack   = "privatelink-dns"
-  }
-}
-
 #######################################################################
 ## Create Network Peering
 #######################################################################
@@ -158,9 +105,35 @@ resource "azurerm_virtual_network_peering" "hub-spoke-peer" {
   remote_virtual_network_id    = azurerm_virtual_network.spoke-vnet.id
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
-  allow_gateway_transit        = true
+  allow_gateway_transit        = false
   use_remote_gateways          = false
-  depends_on                   = [azurerm_virtual_network.spoke-vnet, azurerm_virtual_network.hub-vnet, azurerm_virtual_network_gateway.hub-vnet-gateway]
+  depends_on                   = [azurerm_virtual_network.spoke-vnet, azurerm_virtual_network.hub-vnet]
+}
+
+resource "azurerm_virtual_network_peering" "spoke-hub-peer" {
+  name                      = "spoke-hub-peer"
+  resource_group_name       = azurerm_resource_group.privatelink-dns-microhack-rg.name
+  virtual_network_name      = azurerm_virtual_network.spoke-vnet.name
+  remote_virtual_network_id = azurerm_virtual_network.hub-vnet.id
+
+  allow_virtual_network_access = true
+  allow_forwarded_traffic      = true
+  allow_gateway_transit        = false
+  use_remote_gateways          = false
+  depends_on                   = [azurerm_virtual_network.spoke-vnet, azurerm_virtual_network.hub-vnet]
+}
+
+resource "azurerm_virtual_network_peering" "hub-onprem-peer" {
+  name                      = "hub-onprem-peer"
+  resource_group_name       = azurerm_resource_group.privatelink-dns-microhack-rg.name
+  virtual_network_name      = azurerm_virtual_network.hub-vnet.name
+  remote_virtual_network_id = azurerm_virtual_network.onprem-vnet.id
+
+  allow_virtual_network_access = true
+  allow_forwarded_traffic      = true
+  allow_gateway_transit        = false
+  use_remote_gateways          = false
+  depends_on                   = [azurerm_virtual_network.onprem-vnet, azurerm_virtual_network.hub-vnet]
 }
 
 #######################################################################
@@ -283,96 +256,4 @@ resource "azurerm_virtual_machine" "az-mgmt-vm" {
     deployment  = "terraform"
     microhack   = "privatelink-dns"
   }
-}
-
-#############################################################################
-## Create Virtual Network Gateway
-#############################################################################
-
-resource "azurerm_public_ip" "hub-vpn-gateway-pip" {
-  name                = "hub-vpn-gateway-pip"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.privatelink-dns-microhack-rg.name
-
-  allocation_method = "Dynamic"
-}
-
-resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
-  name                = "hub-vpn-gateway"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.privatelink-dns-microhack-rg.name
-
-  type     = "Vpn"
-  vpn_type = "RouteBased"
-
-  active_active = false
-  enable_bgp    = false
-  sku           = "VpnGw1"
-
-  ip_configuration {
-    name                          = "vnetGatewayConfig"
-    public_ip_address_id          = azurerm_public_ip.hub-vpn-gateway-pip.id
-    private_ip_address_allocation = "Dynamic"
-    subnet_id                     = azurerm_subnet.hub-gateway-subnet.id
-  }
-  depends_on = [azurerm_public_ip.hub-vpn-gateway-pip]
-
-  tags = {
-    environment = "hub-spoke"
-    deployment  = "terraform"
-    microhack   = "privatelink-dns"
-  }
-}
-
-#######################################################################
-## Create Connections
-#######################################################################
-
-resource "azurerm_virtual_network_gateway_connection" "hub-onprem-conn" {
-  name                = "hub-onprem-conn"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.privatelink-dns-microhack-rg.name
-
-  type           = "Vnet2Vnet"
-  routing_weight = 1
-
-  virtual_network_gateway_id      = azurerm_virtual_network_gateway.hub-vnet-gateway.id
-  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.onprem-vpn-gateway.id
-
-  shared_key = local.shared-key
-}
-
-resource "azurerm_virtual_network_gateway_connection" "onprem-hub-conn" {
-  name                            = "onprem-hub-conn"
-  location                        = var.location
-  resource_group_name             = azurerm_resource_group.privatelink-dns-microhack-rg.name
-  type                            = "Vnet2Vnet"
-  routing_weight                  = 1
-  virtual_network_gateway_id      = azurerm_virtual_network_gateway.onprem-vpn-gateway.id
-  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.hub-vnet-gateway.id
-
-  shared_key = local.shared-key
-
-  tags = {
-    environment = "hub-spoke"
-    deployment  = "terraform"
-    microhack   = "privatelink-dns"
-  }
-}
-
-#######################################################################
-## Create VNet Peering
-#######################################################################
-
-resource "azurerm_virtual_network_peering" "spoke-hub-peer" {
-  name                      = "spoke-hub-peer"
-  resource_group_name       = azurerm_resource_group.privatelink-dns-microhack-rg.name
-  virtual_network_name      = azurerm_virtual_network.spoke-vnet.name
-  remote_virtual_network_id = azurerm_virtual_network.hub-vnet.id
-
-  allow_virtual_network_access = true
-  allow_forwarded_traffic      = true
-  allow_gateway_transit        = false
-  use_remote_gateways          = true
-  depends_on                   = [azurerm_virtual_network.spoke-vnet, azurerm_virtual_network.hub-vnet, azurerm_virtual_network_gateway.hub-vnet-gateway]
 }
