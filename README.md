@@ -121,10 +121,6 @@ Test connectivity using SSMS and the dynamic public IP (SNAT) of your 'az' and '
 
 VNet Service Endpoints are the 'old' way to provide restricted connectivity but can still be useful in some scenarios.
 Test this before starting on Private Link.
-Ensure you block public connectivity and remove the SQL firewall allow rule to make sure you're using VNet Service Endpoints.
-
-
-![image](images/4.PNG)
 
 
 ## :checkered_flag: Results
