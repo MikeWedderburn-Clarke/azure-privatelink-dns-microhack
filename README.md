@@ -208,7 +208,11 @@ For this challenge you need to:
 
 - You are now using Azure Private Link to access your SQL server from On-Premises. You have modified your DNS configuration to make this work, as depicted in the packet-walk diagram below.
 
-![image](images/end.png)
+![image](images/endArrows.png)
+
+**Key**
+- Black arrows = DNS
+- Red arrows = data path
  
 # Challenge 6 : Stretch Goal
 
